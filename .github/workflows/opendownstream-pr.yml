@@ -23,7 +23,7 @@ jobs:
         with:
           repository: 'flouthoc/buildah' # The target repository
           path: 'buildah'                 # Checkout into a sub-directory
-          token: ${{ secrets.VENDOR_TOKEN_PODMANBOT }} Use the PAT for write access
+          token: ${{ secrets.VENDOR_TOKEN_PODMANBOT }}
 
       - name: 'Vendor Code from this repo to buildah'
         run: |
@@ -50,9 +50,9 @@ jobs:
           cat go.mod
           
           # Download and verify the module
-          go mod tidy
-          go mod vendor
-          go mod verify
+          GOWORK=off go mod tidy
+          GOWORK=off go mod vendor
+          GOWORK=off go mod verify
           
           echo "Updated go.mod:"
           cat go.mod
@@ -64,7 +64,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           
           BRANCH_NAME="sync/container-libs-${{ github.event.pull_request.number }}"
-          git switch -c $BRANCH_NAME
+          git switch $BRANCH_NAME
           
           git add .
           git commit -m "feat: Vendor changes from podmanbot/container-libs#${{ github.event.pull_request.number }}"
@@ -83,12 +83,21 @@ jobs:
           SELF_REPO_PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
           cd buildah
+          git pull
+          gh repo set-default flouthoc/buildah
+          gh repo set-default --view
           
+          BRANCH_NAME="sync/container-libs-${{ github.event.pull_request.number }}"
           PR_TITLE="Sync: ${{ env.SELF_REPO_PR_TITLE }}"
           PR_BODY="This PR automatically vendors changes from [repo-A#${{ env.SELF_REPO_PR_NUMBER }}](${{ env.SELF_REPO_PR_URL }})."
           
           # Check if PR already exists for this branch
-          EXISTING_PR_URL=$(gh pr list --head ${{ env.BRANCH_NAME }} --json url --jq '.[0].url' 2>/dev/null || echo "")
+          echo $BRANCH_NAME
+          gh pr list --head $BRANCH_NAME --json url
+          EXISTING_PR_URL=$(gh pr list --head $BRANCH_NAME --json url --jq '.[0].url' 2>/dev/null || echo "")
+
+          echo "Printing exisiting PR URL"
+          echo $EXISTING_PR_URL
           
           if [ -n "$EXISTING_PR_URL" ]; then
             echo "Found existing PR: $EXISTING_PR_URL"
